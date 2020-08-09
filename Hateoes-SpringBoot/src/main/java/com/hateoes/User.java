@@ -3,13 +3,7 @@ package com.hateoes;
 import java.io.Serializable;
 import java.util.Date;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.validation.constraints.Past;
-import javax.validation.constraints.Size;
-
+@ApiModel(description = "All details about the user")
 @Entity(name = "user")
 public class User implements Serializable, Cloneable {
 
@@ -20,26 +14,20 @@ public class User implements Serializable, Cloneable {
 	private Integer id;
 
 	@Size(min = 5)
+	@ApiModelProperty(notes = "name should have atleast 5 characters")
 	private String name;
 
 	@Past
+	@ApiModelProperty(notes = "Birth date should be in the past")
 	private Date dob;
 
 	private String msg;
 
 	public User() {
-
 	}
 
-	public User(Integer id, String msg) {
+	public User(@Size(min = 5) String name, @Past Date dob, String msg) {
 		super();
-		this.id = id;
-		this.msg = msg;
-	}
-
-	public User(Integer id, String name, Date dob, String msg) {
-		super();
-		this.id = id;
 		this.name = name;
 		this.dob = dob;
 		this.msg = msg;

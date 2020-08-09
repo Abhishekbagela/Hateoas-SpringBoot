@@ -3,31 +3,17 @@ package com.hateoes;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.validation.Valid;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/user")
 public class UserController {
 
 	@Autowired
-	UserService userService;
+	private UserService userService;
+
+	@Autowired
+	private MessageSource messageSource;
 
 	// public void setUserService(UserService userService) {
 	// this.userService = userService;
@@ -51,38 +37,42 @@ public class UserController {
 
 		if (user == null) {
 			throw new UserNotFoundException("User Not Found");
-		} else {
-
-			EntityModel<User> resource = EntityModel.of(user);
-			/*
-			 * resource.add(
-			 * WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass
-			 * ()). deleteUser(id)).withRel("delete"));
-			 */
-			List<String> alloweActions = alowedAction(user);
-			alloweActions.stream().forEach(action -> {
-
-				if (action.equalsIgnoreCase("DELETE")) {
-
-					resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).deleteUser(id))
-							.withRel("delete"));
-
-				}
-				if (action.equalsIgnoreCase("ADD")) {
-					resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).createUser(user))
-							.withRel("createUser"));
-
-				}
-				if (action.equalsIgnoreCase("UPDATE")) {
-					resource.add(
-							WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).updateUser(id, user))
-									.withRel("update"));
-
-				}
-
-			});
-			return new ResponseEntity<>(resource, HttpStatus.OK);
 		}
+
+		EntityModel<User> resource = EntityModel.of(user);
+		/*
+		 * resource.add(
+		 * WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass
+		 * ()). deleteUser(id)).withRel("delete"));
+		 */
+		List<String> alloweActions = alowedAction(user);
+		alloweActions.stream().forEach(action -> {
+
+			if (action.equalsIgnoreCase("DELETE")) {
+
+				resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).deleteUser(id))
+						.withRel("delete"));
+
+			}
+			if (action.equalsIgnoreCase("ADD")) {
+				resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).createUser(user))
+						.withRel("createUser"));
+
+			}
+
+			if (action.equalsIgnoreCase("AllUSER")) {
+				resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).getAllUser())
+						.withRel("getAllUser"));
+			}
+
+			if (action.equalsIgnoreCase("UPDATE")) {
+				resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).updateUser(id, user))
+						.withRel("updateUser"));
+
+			}
+
+		});
+		return new ResponseEntity<>(resource, HttpStatus.OK);
 	}
 
 	@PutMapping("/{id}")
@@ -105,27 +95,39 @@ public class UserController {
 	// return users;
 	// }
 
+	// dont return a list from api this is not a good prectis in java
 	// for getting all users
-	@GetMapping(path = "/users", produces = { "application/hal+json" })
+	@GetMapping("/users")
 	public List<User> getAllUser() {
 		List<User> users = userService.allUser();
 
 		if (users == null) {
 			throw new UserNotFoundException("There is no user present");
 		}
+
 		return users;
 	}
 
 	// for adding the user
 	@PostMapping("/users")
-	public ResponseEntity<Object> createUser(@Valid @RequestBody User user) {
+	public ResponseEntity<?> createUser(@Valid @RequestBody User user) {
 		URI location;
 
 		if (user != null) {
 			User savedUser = userService.addUser(user);
-			location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(savedUser.getId())
-					.toUri();
-			return ResponseEntity.created(location).build();
+			/*
+			 * location =
+			 * ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").
+			 * buildAndExpand(savedUser.getId()) .toUri(); return
+			 * ResponseEntity.created(location).build();
+			 */
+
+			EntityModel<User> em = EntityModel.of(savedUser);
+
+			em.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(this.getClass()).getAllUser())
+					.withRel("all-user"));
+
+			return new ResponseEntity<>(em, HttpStatus.CREATED);
 		}
 		throw new UserCanNotBeBlank("Please provide user data");
 	}
@@ -156,21 +158,30 @@ public class UserController {
 		return users;
 	}
 
+	// internationalization
+
+	@GetMapping(path = "/i18n")
+	public String internationalization(@RequestHeader(value = "Accept-Language", required = false) Locale local) {
+		// return messageSource.getMessage("good.morning.message", null, local);
+
+		return messageSource.getMessage("good.morning.message", null, LocaleContextHolder.getLocale());
+	}
+
+	// -------------------------------------------------------------------------------------------------
 	// for sending link operation
 	protected List<String> alowedAction(User u) {
 		List<String> actions = new ArrayList<>();
-
 		User usr = userService.getUser(u.getId());
-
 		if (usr != null) {
 			actions.add("DELETE");
+			actions.add("UPDATE");
+			actions.add("AllUSER");
 
 			return actions;
 		} else {
 			actions.add("ADD");
-			actions.add("UPDATE");
-
 			return actions;
 		}
 	}
+
 }
